@@ -2226,8 +2226,12 @@ function getEmpId(){
 }
 
 function getLastPunch(empId){
-  const today=todayStr();
-  const list=records.filter(r=>r.empId===empId&&r.date===today);
+  const today = todayStr();
+  const list = records.filter(r =>
+    r.empId === empId &&
+    r.date  === today &&
+    (r.type === 'in' || r.type === 'out')
+  ).sort((a,b) => a.time.localeCompare(b.time)); // 升序，最新的在最後
   return list.length ? list[list.length-1] : null;
 }
 
