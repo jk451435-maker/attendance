@@ -2254,23 +2254,36 @@ function updatePunchUI(){
   const isOff = sid==='off';
   const isHoliday = sid==='holiday';
 
+  // 檢查今天已打的卡
+  const todayPunches = records.filter(r =>
+    r.empId === empId && r.date === todayStr() &&
+    (r.type === 'in' || r.type === 'out')
+  );
+  const hasIn  = todayPunches.some(r => r.type === 'in');
+  const hasOut = todayPunches.some(r => r.type === 'out');
+
   // 只有休假/假日才鎖定按鈕
   if(isOff || isHoliday){
     btnIn.disabled=true; btnOut.disabled=true;
     badge.textContent = isOff?'休假':'假日';
     badge.className = isOff?'badge badge-off':'badge badge-holiday';
     info.textContent='今日無法打卡';
-  } else if(last && last.type==='in'){
-    // 已打上班卡 → 上班中，兩個按鈕都可按（可補打或重打）
-    badge.textContent='上班中'; badge.className='badge badge-in';
-    btnIn.disabled=false; btnOut.disabled=false;
-    info.textContent=`上班：${last.time}`;
   } else {
-    // 未打卡或已打下班卡
-    badge.textContent= last?'已下班':'未上班';
-    badge.className='badge badge-out';
-    btnIn.disabled=false; btnOut.disabled=false;
-    info.textContent = last?`下班：${last.time}`:'';
+    btnIn.disabled  = hasIn;
+    btnOut.disabled = hasOut;
+    if(hasIn && hasOut){
+      badge.textContent='已完成'; badge.className='badge badge-in';
+      info.textContent=`上班：${todayPunches.find(r=>r.type==='in').time} ／ 下班：${todayPunches.find(r=>r.type==='out').time}`;
+    } else if(hasIn){
+      badge.textContent='上班中'; badge.className='badge badge-in';
+      info.textContent=`上班：${todayPunches.find(r=>r.type==='in').time}`;
+    } else if(hasOut){
+      badge.textContent='已下班'; badge.className='badge badge-out';
+      info.textContent=`下班：${todayPunches.find(r=>r.type==='out').time}`;
+    } else {
+      badge.textContent='未上班'; badge.className='badge badge-out';
+      info.textContent='';
+    }
   }
 
   // show today's shift box
