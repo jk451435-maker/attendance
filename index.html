@@ -2567,12 +2567,17 @@ function updateStats(){
 // RECORDS RENDER
 // ════════════════════════════════════════
 function renderTodayRecs(){
-  const today=todayStr();
-  const list=records.filter(r=>r.date===today);
-  const el=document.getElementById('todayRecList');
+  const today = todayStr();
+  const isAdminUser = currentUser?.role === 'admin';
+  let list = records.filter(r => r.date === today);
+  // 員工只看自己的今日紀錄
+  if(!isAdminUser && currentUser?.id){
+    list = list.filter(r => r.empId === currentUser.id);
+  }
+  const el = document.getElementById('todayRecList');
   if(!el) return;
-  if(!list.length){el.innerHTML='<div class="empty">今日尚無打卡</div>';return;}
-  el.innerHTML=list.map(r=>recRowHtml(r)).join('');
+  if(!list.length){ el.innerHTML='<div class="empty">今日尚無打卡</div>'; return; }
+  el.innerHTML = list.map(r => recRowHtml(r)).join('');
 }
 function onDateFilterChange(){
   // When manual date selected, clear tab filter
