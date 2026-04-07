@@ -1518,7 +1518,7 @@ function confirmFirstPwd(){
   save('pr2_empPwd', empPasswords);
   closeModal('firstPwdModal');
   const emp = employees.find(e=>e.id===empId);
-  loginAs({id:emp.id, name:emp.name, dept:emp.dept, role:'emp'});
+  loginAs({id:emp.id, name:emp.name, dept:emp.dept, empType:emp.empType, flexible:emp.flexible, role:'emp'});
   toast(`密碼設定成功，歡迎 ${emp.name}！`,'ts');
 }
 
@@ -2246,18 +2246,15 @@ function updatePunchUI(){
   const shift = shifts.find(s=>s.id===sid);
   const empData = employees.find(e=>e.id===empId);
   const isFlexible = empData?.flexible === true;
-  const canPunch = isFlexible || shift != null; // 彈性員工不需要排班
+  const hasSchedule = shift != null;
+  const isOff = sid==='off';
+  const isHoliday = sid==='holiday';
 
-  if(!canPunch){
-    // 無排班 / 休假 / 假日 → 全部鎖定
+  // 只有休假/假日才鎖定按鈕
+  if(isOff || isHoliday){
     btnIn.disabled=true; btnOut.disabled=true;
-    if(sid==='off'){
-      badge.textContent='休假'; badge.className='badge badge-off';
-    } else if(sid==='holiday'){
-      badge.textContent='假日'; badge.className='badge badge-holiday';
-    } else {
-      badge.textContent='未排班'; badge.className='badge badge-out';
-    }
+    badge.textContent = isOff?'休假':'假日';
+    badge.className = isOff?'badge badge-off':'badge badge-holiday';
     info.textContent='今日無法打卡';
   } else if(!last||last.type==='out'){
     badge.textContent='未上班'; badge.className='badge badge-out';
@@ -2278,24 +2275,30 @@ function updatePunchUI(){
     document.getElementById('tsbName').textContent=shift.name;
     document.getElementById('tsbName').style.color=shift.color;
     document.getElementById('tsbTime').textContent=`${shift.start} — ${shift.end}　寬限 ${shift.grace} 分`;
-  } else if(sid==='off'){
+  } else if(isOff){
     box.style.display='flex'; box.style.borderColor='rgba(122,110,158,.25)';
     document.getElementById('tsbIcon').textContent='🌙';
     document.getElementById('tsbName').textContent='今日休假';
     document.getElementById('tsbName').style.color='var(--mauve)';
     document.getElementById('tsbTime').textContent='';
-  } else if(sid==='holiday'){
+  } else if(isHoliday){
     box.style.display='flex'; box.style.borderColor='rgba(176,136,64,.25)';
     document.getElementById('tsbIcon').textContent='🎌';
     document.getElementById('tsbName').textContent='今日假日';
     document.getElementById('tsbName').style.color='var(--amber)';
     document.getElementById('tsbTime').textContent='';
+  } else if(isFlexible){
+    box.style.display='flex'; box.style.borderColor='rgba(154,120,64,.25)';
+    document.getElementById('tsbIcon').textContent='🕐';
+    document.getElementById('tsbName').textContent='彈性打卡';
+    document.getElementById('tsbName').style.color='var(--amber)';
+    document.getElementById('tsbTime').textContent='可自由打卡，系統自動計算工時';
   } else {
-    box.style.display='flex'; box.style.borderColor='rgba(143,95,95,.25)';
-    document.getElementById('tsbIcon').textContent = isFlexible ? '🕐' : '📭';
-    document.getElementById('tsbName').textContent = isFlexible ? '彈性打卡' : '今日尚未排班';
-    document.getElementById('tsbName').style.color = isFlexible ? 'var(--amber)' : 'var(--muted2)';
-    document.getElementById('tsbTime').textContent = isFlexible ? '可自由打卡，系統自動計算工時' : '請聯絡管理員排班後才能打卡';
+    box.style.display='flex'; box.style.borderColor='rgba(180,80,80,.2)';
+    document.getElementById('tsbIcon').textContent='⚠️';
+    document.getElementById('tsbName').textContent='今日尚未排班';
+    document.getElementById('tsbName').style.color='var(--rose)';
+    document.getElementById('tsbTime').textContent='提醒：今日無排班，遲到/加班無法自動計算';
   }
 
   // geo block
@@ -2324,12 +2327,10 @@ function doPunch(type){
   const sid  = schedule[key];
   const shift = shifts.find(s=>s.id===sid);
 
-  // 必須有排班才能打卡（PT 例外）
-  if(!isFlexible){
-    if(!sid){ toast('今日尚未排班，無法打卡','te'); return; }
-    if(sid === 'off'){ toast('今日為休假日，無法打卡','te'); return; }
-    if(sid === 'holiday'){ toast('今日為假日，無法打卡','te'); return; }
-  }
+  // 只有休假/假日才阻擋打卡，未排班仍可打卡（但無遲到/加班計算）
+  if(sid === 'off'){ toast('今日為休假日，無法打卡','te'); return; }
+  if(sid === 'holiday'){ toast('今日為假日，無法打卡','te'); return; }
+  if(!shift && !isFlexible) toast('⚠️ 今日未排班，將記錄打卡但無法計算遲到/加班','tw');
 
   // Auto-calculate late minutes (only for punch-in)
   let lateMin = 0;
