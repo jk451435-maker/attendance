@@ -2442,14 +2442,16 @@ function onGeoSuccess(pos){
     window._geoOk = dist <= radius;
     setGeoStatus(window._geoOk ? 'ok' : 'out', dist, radius);
   } else {
-    window._geoOk = true; // No company location set → allow
+    window._geoOk = true;
     setGeoStatus('noconfig');
   }
+  updatePunchUI(); // 定位取得後重新更新按鈕狀態
 }
 
 function onGeoError(err){
   window._geoReady=true; window._geoOk=false;
   setGeoStatus('error', null, null, err.message);
+  updatePunchUI(); // 定位失敗後重新更新按鈕狀態
 }
 
 function setGeoStatus(state, dist, radius, errMsg){
