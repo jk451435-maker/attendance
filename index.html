@@ -3,53 +3,220 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>班表打卡系統</title>
+<title>反作用力打卡系統</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script>
+// Minimal XLSX generator - pure JS, no dependencies
+// Generates valid .xlsx files that open in Excel/Google Sheets
 var XLSX = (function(){
-  function jsonToSheet(data){
-    if(!data||!data.length) return {headers:[],rows:[]};
-    var headers = Object.keys(data[0]);
-    var rows = data.map(function(r){ return headers.map(function(h){ return r[h]===undefined?'':r[h]; }); });
-    return {headers:headers, rows:rows};
+
+  function escapeXml(s){
+    if(s===null||s===undefined) return '';
+    return String(s)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&apos;');
   }
-  function escapeCell(v){
-    var s = String(v===null||v===undefined?'':v);
-    if(s.indexOf('"')>-1||s.indexOf(',')>-1||s.indexOf('\n')>-1){
-      return '"'+s.replace(/"/g,'""')+'"';
-    }
+
+  function colName(n){
+    var s='';
+    while(n>=0){ s=String.fromCharCode(65+n%26)+s; n=Math.floor(n/26)-1; }
     return s;
   }
-  function writeFile(wb, filename){
-    var parts = [];
-    wb.order.forEach(function(name, si){
-      var ws = wb.sheets[name];
-      if(si>0) parts.push('');
-      if(wb.order.length>1) parts.push('# '+name);
-      parts.push(ws.headers.map(escapeCell).join(','));
-      ws.rows.forEach(function(row){ parts.push(row.map(escapeCell).join(',')); });
+
+  function jsonToSheet(data){
+    if(!data||!data.length) return {headers:[],rows:[]};
+    var headers=Object.keys(data[0]);
+    var rows=data.map(function(r){ return headers.map(function(h){ return r[h]===undefined?'':r[h]; }); });
+    return {headers:headers,rows:rows};
+  }
+
+  function sheetToXml(ws, sheetName){
+    var rows=[ws.headers].concat(ws.rows);
+    var xml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+    xml+='<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/sheet">';
+    xml+='<sheetData>';
+    rows.forEach(function(row,ri){
+      xml+='<row r="'+(ri+1)+'">';
+      row.forEach(function(cell,ci){
+        var ref=colName(ci)+(ri+1);
+        var v=escapeXml(cell);
+        var t = (ri===0 || isNaN(cell)||cell==='')?'inlineStr':'n';
+        if(t==='inlineStr'){
+          xml+='<c r="'+ref+'" t="inlineStr"><is><t>'+v+'</t></is></c>';
+        } else {
+          xml+='<c r="'+ref+'"><v>'+v+'</v></c>';
+        }
+      });
+      xml+='</row>';
     });
-    var BOM = '\xEF\xBB\xBF';
-    var csv = BOM + parts.join('\r\n');
-    var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = filename.replace(/\.xlsx$/i, '.csv');
+    xml+='</sheetData></worksheet>';
+    return xml;
+  }
+
+  // Simple ZIP implementation
+  function crc32(buf){
+    var crc=0xFFFFFFFF;
+    var table=[];
+    for(var i=0;i<256;i++){
+      var c=i;
+      for(var j=0;j<8;j++) c=c&1?(0xEDB88320^(c>>>1)):(c>>>1);
+      table[i]=c;
+    }
+    for(var k=0;k<buf.length;k++) crc=table[(crc^buf[k])&0xFF]^(crc>>>8);
+    return (crc^0xFFFFFFFF)>>>0;
+  }
+
+  function strToBytes(s){
+    var b=new Uint8Array(s.length);
+    for(var i=0;i<s.length;i++) b[i]=s.charCodeAt(i)&0xFF;
+    return b;
+  }
+
+  function u16le(n){ return [n&0xFF,(n>>8)&0xFF]; }
+  function u32le(n){ return [n&0xFF,(n>>8)&0xFF,(n>>16)&0xFF,(n>>24)&0xFF]; }
+
+  function makeZip(files){
+    // files: [{name, data(Uint8Array)}]
+    var parts=[];
+    var centralDir=[];
+    var offset=0;
+
+    files.forEach(function(f){
+      var name=strToBytes(f.name);
+      var data=f.data;
+      var crc=crc32(data);
+      var localHeader=[
+        0x50,0x4B,0x03,0x04, // sig
+        0x14,0x00,           // version 20
+        0x00,0x00,           // flags
+        0x00,0x00,           // compression: store
+      ].concat(u16le(0),u16le(0)) // mod time/date
+       .concat(u32le(crc))
+       .concat(u32le(data.length))
+       .concat(u32le(data.length))
+       .concat(u16le(name.length))
+       .concat(u16le(0));   // extra len
+
+      var localBytes=new Uint8Array(localHeader.length+name.length+data.length);
+      localBytes.set(localHeader);
+      localBytes.set(name,localHeader.length);
+      localBytes.set(data,localHeader.length+name.length);
+      parts.push(localBytes);
+
+      var cdEntry=[
+        0x50,0x4B,0x01,0x02, // sig
+        0x14,0x00,           // version made
+        0x14,0x00,           // version needed
+        0x00,0x00,           // flags
+        0x00,0x00,           // compression
+      ].concat(u16le(0),u16le(0))
+       .concat(u32le(crc))
+       .concat(u32le(data.length))
+       .concat(u32le(data.length))
+       .concat(u16le(name.length))
+       .concat(u16le(0),u16le(0),u16le(0),u16le(0))
+       .concat(u32le(0))
+       .concat(u32le(offset));
+      cdEntry=cdEntry.concat(Array.from(name));
+      centralDir.push(new Uint8Array(cdEntry));
+      offset+=localBytes.length;
+    });
+
+    var cdSize=centralDir.reduce(function(a,b){return a+b.length;},0);
+    var eocd=[
+      0x50,0x4B,0x05,0x06,
+      0x00,0x00,0x00,0x00,
+    ].concat(u16le(files.length))
+     .concat(u16le(files.length))
+     .concat(u32le(cdSize))
+     .concat(u32le(offset))
+     .concat(u16le(0));
+
+    var total=offset+cdSize+eocd.length;
+    var result=new Uint8Array(total);
+    var pos=0;
+    parts.forEach(function(p){ result.set(p,pos); pos+=p.length; });
+    centralDir.forEach(function(p){ result.set(p,pos); pos+=p.length; });
+    result.set(new Uint8Array(eocd),pos);
+    return result;
+  }
+
+  function writeFile(wb, filename){
+    var sheets=wb.order;
+    var sheetXmls=[];
+    var sheetNames=[];
+
+    sheets.forEach(function(name,i){
+      var ws=wb.sheets[name];
+      sheetXmls.push(sheetToXml(ws,name));
+      sheetNames.push(name);
+    });
+
+    var contentTypes='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      +'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+      +'<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+      +'<Default Extension="xml" ContentType="application/xml"/>'
+      +'<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>';
+    sheetNames.forEach(function(_,i){
+      contentTypes+='<Override PartName="/xl/worksheets/sheet'+(i+1)+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
+    });
+    contentTypes+='</Types>';
+
+    var rels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      +'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      +'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+      +'</Relationships>';
+
+    var wbRels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      +'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">';
+    sheetNames.forEach(function(_,i){
+      wbRels+='<Relationship Id="rId'+(i+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet'+(i+1)+'.xml"/>';
+    });
+    wbRels+='</Relationships>';
+
+    var workbook='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      +'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/sheet" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+      +'<sheets>';
+    sheetNames.forEach(function(name,i){
+      workbook+='<sheet name="'+escapeXml(name)+'" sheetId="'+(i+1)+'" r:id="rId'+(i+1)+'"/>';
+    });
+    workbook+='</sheets></workbook>';
+
+    var files=[
+      {name:'[Content_Types].xml', data:strToBytes(contentTypes)},
+      {name:'_rels/.rels',         data:strToBytes(rels)},
+      {name:'xl/workbook.xml',     data:strToBytes(workbook)},
+      {name:'xl/_rels/workbook.xml.rels', data:strToBytes(wbRels)},
+    ];
+    sheetXmls.forEach(function(xml,i){
+      files.push({name:'xl/worksheets/sheet'+(i+1)+'.xml', data:strToBytes(xml)});
+    });
+
+    var zip=makeZip(files);
+    var blob=new Blob([zip],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+    setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
   }
+
   return {
-    utils: {
-      json_to_sheet: jsonToSheet,
-      book_new: function(){ return {sheets:{},order:[]}; },
-      book_append_sheet: function(wb,ws,name){ wb.sheets[name]=ws; wb.order.push(name); }
+    utils:{
+      json_to_sheet:jsonToSheet,
+      book_new:function(){return{sheets:{},order:[]};},
+      book_append_sheet:function(wb,ws,name){wb.sheets[name]=ws;wb.order.push(name);}
     },
-    writeFile: writeFile
+    writeFile:writeFile
   };
 })();
 function loadXLSX(cb){ cb(); }
+
 </script>
 <style>
 /* ── 色彩系統 ── */
@@ -745,6 +912,35 @@ textarea { resize: vertical; min-height: 52px; }
     </div>
   </div>
 </div>
+
+<!-- 補登打卡 -->
+<div class="modal-bg" id="manualPunchModal">
+  <div class="modal" style="width:400px;">
+    <h2>🕐 補登<span>打卡</span></h2>
+    <div class="fgrid fg2" style="margin-bottom:.75rem;">
+      <div class="fgrp"><label>員工</label><select id="mpEmpSel"></select></div>
+      <div class="fgrp"><label>日期</label><input type="date" id="mpDate"></div>
+    </div>
+    <div class="fgrid fg2" style="margin-bottom:.75rem;">
+      <div class="fgrp">
+        <label>類型</label>
+        <select id="mpType">
+          <option value="in">🟢 上班打卡</option>
+          <option value="out">🔴 下班打卡</option>
+        </select>
+      </div>
+      <div class="fgrp"><label>時間</label><input type="text" id="mpTime" placeholder="HH:MM" maxlength="5" oninput="fmtTime(this)"></div>
+    </div>
+    <div class="fgrp" style="margin-bottom:.75rem;">
+      <label>備註（選填）</label>
+      <input type="text" id="mpNote" placeholder="例：忘記打卡">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gold" style="flex:1;" onclick="saveManualPunch()">💾 儲存</button>
+      <button class="btn btn-ghost" onclick="closeModal('manualPunchModal')">取消</button>
+    </div>
+  </div>
+</div>
 <div class="modal-bg" id="assignModal">
   <div class="modal">
     <h2>📅 <span id="assignDateTitle"></span></h2>
@@ -795,7 +991,7 @@ textarea { resize: vertical; min-height: 52px; }
 <aside class="sidebar">
   <div class="sidebar-logo">
     <div class="logo-mark">⏱</div>
-    <div class="logo-name">班表<em>Pro</em></div>
+    <div class="logo-name">反作用力<em>打卡</em></div>
   </div>
   <nav class="nav">
     <button class="nav-btn emp-nav active" data-tip="打卡" onclick="go('punch',this)"><span class="ni">🕐</span><span>打卡</span></button>
@@ -931,6 +1127,7 @@ textarea { resize: vertical; min-height: 52px; }
         <input type="date" id="filterDateTo" style="width:140px;" onchange="onDateFilterChange()">
         <button class="btn btn-ghost btn-sm" onclick="clearDateFilter()" data-tip="清除日期篩選">✕ 清除</button>
         <button class="btn btn-sage btn-sm" onclick="openOvertimeModal()" data-tip="手動為員工登錄加班時數">⏰ 登錄加班</button>
+        <button class="btn btn-ghost btn-sm" onclick="openManualPunchModal()" data-tip="補登員工打卡紀錄">🕐 補登打卡</button>
         <button class="btn btn-gold btn-sm" onclick="exportExcel()">📊 匯出</button>
         <input type="month" id="exportMonth" style="width:138px;">
       </div>
@@ -2450,13 +2647,14 @@ function setFilter(f, btn){
 // ════════════════════════════════════════
 function recRowHtml(r, showDel=false){
   const geoTag  = r.dist!=null ? ` · 📍${r.dist}m` : '';
+  const manualTag = r.isManual ? `<span style="font-size:.65rem;padding:.1rem .4rem;border-radius:4px;background:rgba(90,80,138,.12);color:var(--mauve);margin-left:.3rem;">補登</span>` : '';
   const lateTag = r.lateMin  > 0 ? `<span class="tag-late">遲到 ${r.lateMin}分${r.lateReason?' · '+r.lateReason:''}</span> ` : '';
   const otTag   = r.otHours  > 0 ? `<span class="tag-ot">加班 ${r.otHours}h${r.otReason?' · '+r.otReason:''}</span> ` : '';
   const isAdminUser = currentUser?.role === 'admin';
   return `<div class="rec-row" style="grid-template-columns:8px 1fr auto auto auto auto;">
     <div class="rec-dot ${r.type==='in'?'dot-in':'dot-out'}"></div>
     <div>
-      <div class="rec-name">${r.empName}</div>
+      <div class="rec-name">${r.empName}${manualTag}</div>
       <div class="rec-sub">${r.type==='in'?'🟢 上班':'🔴 下班'}${r.note?' · '+r.note:''}${geoTag}</div>
       ${lateTag||otTag ? `<div style="margin-top:.2rem;display:flex;gap:.3rem;flex-wrap:wrap;">${lateTag}${otTag}</div>` : ''}
     </div>
@@ -2484,6 +2682,73 @@ function openOvertimeModal(){
   document.getElementById('otHours').value = '1';
   document.getElementById('otReason').value = '';
   openModal('overtimeModal');
+}
+
+function openManualPunchModal(){
+  const sel = document.getElementById('mpEmpSel');
+  sel.innerHTML = employees.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+  document.getElementById('mpDate').value = todayStr();
+  document.getElementById('mpTime').value = '';
+  document.getElementById('mpNote').value = '';
+  document.getElementById('mpType').value = 'in';
+  openModal('manualPunchModal');
+}
+
+function saveManualPunch(){
+  const empId = document.getElementById('mpEmpSel').value;
+  const date  = document.getElementById('mpDate').value;
+  const type  = document.getElementById('mpType').value;
+  const time  = document.getElementById('mpTime').value.trim();
+  const note  = document.getElementById('mpNote').value.trim();
+  if(!empId||!date){ toast('請選擇員工與日期','te'); return; }
+  if(!validTime(time)){ toast('請輸入正確時間（HH:MM）','te'); return; }
+
+  const emp = employees.find(e=>e.id===empId);
+  const key = empId+':'+date;
+  const sid = schedule[key];
+  const shift = shifts.find(s=>s.id===sid);
+
+  // 計算遲到（補登上班）
+  let lateMin = 0;
+  if(type==='in' && shift){
+    const [sh,sm] = shift.start.split(':').map(Number);
+    const grace = shift.grace||0;
+    const [th,tm] = time.split(':').map(Number);
+    const nowMin = th*60+tm;
+    const startMin = sh*60+sm+grace;
+    if(nowMin > startMin) lateMin = nowMin - startMin;
+  }
+
+  // 計算加班（補登下班）
+  let otHours = 0;
+  if(type==='out' && shift){
+    const [eh,em] = shift.end.split(':').map(Number);
+    const [sh2,sm2] = shift.start.split(':').map(Number);
+    const [th,tm] = time.split(':').map(Number);
+    let endMin = eh*60+em;
+    if(endMin < sh2*60+sm2) endMin += 24*60;
+    const nowMin = th*60+tm;
+    if(nowMin > endMin) otHours = Math.round((nowMin-endMin)/60*10)/10;
+  }
+
+  const rec = {
+    id: Date.now(), empId, empName: emp?.name||empId,
+    type,
+    timestamp: new Date(date+'T'+time).toISOString(),
+    date, time: time+':00',
+    note: note || '（管理員補登）',
+    lateMin, lateReason: '',
+    otHours, otReason: '',
+    lat: null, lng: null, dist: null,
+    isManual: true,
+  };
+  records.unshift(rec);
+  // Sort by date+time
+  records.sort((a,b) => (b.date+b.time).localeCompare(a.date+a.time));
+  save('pr2_records', records);
+  closeModal('manualPunchModal');
+  renderRecords(); renderTodayRecs(); updateStats();
+  toast(`✅ 已補登 ${emp?.name} ${type==='in'?'上班':'下班'} ${date} ${time}`,'ts');
 }
 function saveOvertime(){
   const empId  = document.getElementById('otEmpSel').value;
@@ -2626,7 +2891,7 @@ function exportBackup(){
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   const date = new Date().toISOString().slice(0,10);
-  a.download = `班表Pro備份_${date}.json`;
+  a.download = `反作用力打卡系統備份_${date}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
