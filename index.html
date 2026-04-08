@@ -70,9 +70,8 @@ var XLSX = (function(){
   }
 
   function strToBytes(s){
-    var b=new Uint8Array(s.length);
-    for(var i=0;i<s.length;i++) b[i]=s.charCodeAt(i)&0xFF;
-    return b;
+    // Use TextEncoder for proper UTF-8 encoding (handles Chinese/multi-byte chars)
+    return new TextEncoder().encode(s);
   }
 
   function u16le(n){ return [n&0xFF,(n>>8)&0xFF]; }
@@ -85,7 +84,7 @@ var XLSX = (function(){
     var offset=0;
 
     files.forEach(function(f){
-      var name=strToBytes(f.name);
+      var name=new TextEncoder().encode(f.name); // UTF-8 encoded filename
       var data=f.data;
       var crc=crc32(data);
       var localHeader=[
