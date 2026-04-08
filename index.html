@@ -214,7 +214,7 @@ var XLSX = (function(){
     writeFile:writeFile
   };
 })();
-function loadXLSX(cb){ cb(); }
+function loadXLSX(cb){    if(window.XLSX && window.XLSX.utils && window.XLSX.write){ cb(); return; }
 
 </script>
 <style>
