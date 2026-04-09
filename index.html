@@ -213,8 +213,7 @@ var XLSX = (function(){
     },
     writeFile:writeFile
   };
-})();
-function loadXLSX(cb){
+  function loadXLSX(cb){
     if(window.XLSX && window.XLSX.utils && window.XLSX.write){ cb(); return; }
     const s=document.createElement('script');
     s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
@@ -222,6 +221,7 @@ function loadXLSX(cb){
     s.onerror=()=>alert('XLSX 庫載入失敗');
     document.head.appendChild(s);
   }
+})();
 
 </script>
 <style>
