@@ -214,11 +214,12 @@ var XLSX = (function(){
     writeFile:writeFile
   };
   function loadXLSX(cb){
-    if(window.XLSX && window.XLSX.utils && window.XLSX.writeFile){ cb(); return; }
+    if(window.XLSX && window.XLSX.read){ cb(); return; }
+    window.XLSX = null;
     const s=document.createElement('script');
     s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
     s.onload=()=>cb();
-    s.onerror=()=>alert('XLSX 庫載入失敗，請檢查網路連線');
+    s.onerror=()=>alert('XLSX 庫載入失敗');
     document.head.appendChild(s);
   }
 })();
