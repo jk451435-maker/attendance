@@ -2843,6 +2843,7 @@ function saveRecEdit(){
 }
 // ════════════════════════════════════════
 function exportExcel(){
+  loadXLSX(function(){
   const ms=document.getElementById('exportMonth')?.value||'';
   let list=ms?records.filter(r=>r.date.startsWith(ms)):[...records];
   if(!list.length){toast('無資料可匯出','tw');return;}
@@ -2908,7 +2909,8 @@ function exportExcel(){
 // ════════════════════════════════════════
 // ════════════════════════════════════════
 // 備份 / 還原
-// ════════════════════════════════════════
+// ═════════════════════════════════════  });
+}
 function exportBackup(){
   const backup = {
     version: 1,
