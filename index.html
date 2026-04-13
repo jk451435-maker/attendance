@@ -214,11 +214,11 @@ var XLSX = (function(){
     writeFile:writeFile
   };
   function loadXLSX(cb){
-    if(window.XLSX && window.XLSX.utils && window.XLSX.write){ cb(); return; }
+    if(window.XLSX && window.XLSX.utils && window.XLSX.writeFile){ cb(); return; }
     const s=document.createElement('script');
     s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
     s.onload=()=>cb();
-    s.onerror=()=>alert('XLSX 庫載入失敗');
+    s.onerror=()=>alert('XLSX 庫載入失敗，請檢查網路連線');
     document.head.appendChild(s);
   }
 })();
@@ -2417,12 +2417,15 @@ function initGeo(){
   if(!settings.geoEnabled){ bar.style.display='none'; return; }
   bar.style.display='flex';
   setGeoStatus('loading');
-  if(!navigator.geolocation){
-    setGeoStatus('unsupported'); return;
-  }
-  navigator.geolocation.getCurrentPosition(onGeoSuccess, onGeoError, {
-    enableHighAccuracy:true, timeout:12000, maximumAge:30000
+  if(!navigator.geolocation){ setGeoStatus('unsupported'); return; }
+  if(window._geoWatchId != null) navigator.geolocation.clearWatch(window._geoWatchId);
+  if(window._geoTimerId) clearInterval(window._geoTimerId);
+  window._geoWatchId = navigator.geolocation.watchPosition(onGeoSuccess, onGeoError, {
+    enableHighAccuracy:true, timeout:12000, maximumAge:10000
   });
+  window._geoTimerId = setInterval(()=>{
+    navigator.geolocation.getCurrentPosition(onGeoSuccess, onGeoError, {enableHighAccuracy:true, timeout:12000, maximumAge:0});
+  }, 60000);
 }
 
 function refreshGeo(){
