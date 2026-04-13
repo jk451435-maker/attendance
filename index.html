@@ -10,7 +10,7 @@
 // Generates valid .xlsx files that open in Excel/Google Sheets
 var XLSX = (function(){
 
-  function escapeXml(s)
+  function escapeXml(s){
     if(s===null||s===undefined) return '';
     return String(s)
       .replace(/&/g,'&amp;')
