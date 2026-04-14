@@ -10,7 +10,7 @@
 // Generates valid .xlsx files that open in Excel/Google Sheets
 var XLSX = (function(){
 
-  function escapeXml(s){
+  function escapeXml(s)
     if(s===null||s===undefined) return '';
     return String(s)
       .replace(/&/g,'&amp;')
@@ -214,8 +214,7 @@ var XLSX = (function(){
     writeFile:writeFile
   };
   function loadXLSX(cb){
-    if(window.XLSX && window.XLSX.read){ cb(); return; }
-    window.XLSX = null;
+    if(window.XLSX && window.XLSX.utils && window.XLSX.write){ cb(); return; }
     const s=document.createElement('script');
     s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
     s.onload=()=>cb();
@@ -2418,15 +2417,12 @@ function initGeo(){
   if(!settings.geoEnabled){ bar.style.display='none'; return; }
   bar.style.display='flex';
   setGeoStatus('loading');
-  if(!navigator.geolocation){ setGeoStatus('unsupported'); return; }
-  if(window._geoWatchId != null) navigator.geolocation.clearWatch(window._geoWatchId);
-  if(window._geoTimerId) clearInterval(window._geoTimerId);
-  window._geoWatchId = navigator.geolocation.watchPosition(onGeoSuccess, onGeoError, {
-    enableHighAccuracy:true, timeout:12000, maximumAge:10000
+  if(!navigator.geolocation){
+    setGeoStatus('unsupported'); return;
+  }
+  navigator.geolocation.getCurrentPosition(onGeoSuccess, onGeoError, {
+    enableHighAccuracy:true, timeout:12000, maximumAge:30000
   });
-  window._geoTimerId = setInterval(()=>{
-    navigator.geolocation.getCurrentPosition(onGeoSuccess, onGeoError, {enableHighAccuracy:true, timeout:12000, maximumAge:0});
-  }, 60000);
 }
 
 function refreshGeo(){
@@ -2843,7 +2839,6 @@ function saveRecEdit(){
 }
 // ════════════════════════════════════════
 function exportExcel(){
-  loadXLSX(function(){
   const ms=document.getElementById('exportMonth')?.value||'';
   let list=ms?records.filter(r=>r.date.startsWith(ms)):[...records];
   if(!list.length){toast('無資料可匯出','tw');return;}
@@ -2909,8 +2904,7 @@ function exportExcel(){
 // ════════════════════════════════════════
 // ════════════════════════════════════════
 // 備份 / 還原
-// ═════════════════════════════════════  });
-}
+// ════════════════════════════════════════
 function exportBackup(){
   const backup = {
     version: 1,
