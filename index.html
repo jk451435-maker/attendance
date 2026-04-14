@@ -214,7 +214,8 @@ var XLSX = (function(){
     writeFile:writeFile
   };
   function loadXLSX(cb){
-    if(window.XLSX && window.XLSX.utils && window.XLSX.write){ cb(); return; }
+    if(window.XLSX && window.XLSX.read){ cb(); return; }
+    window.XLSX = null;
     const s=document.createElement('script');
     s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
     s.onload=()=>cb();
@@ -2066,6 +2067,8 @@ function openAssignModal(ds){
 function closeAssignModal(){ closeModal('assignModal'); }
 
 function exportScheduleExcel(){
+  loadXLSX(function(){
+
   if(typeof XLSX === 'undefined'){
     toast('❌ Excel 函式庫未載入，請用 localhost 或 https 開啟','te'); return;
   }
@@ -2108,6 +2111,8 @@ function exportScheduleExcel(){
     toast('匯出失敗：' + e.message, 'te');
     console.error(e);
   }
+
+  });
 }
 
 function calPrev(){ calM--; if(calM<0){calM=11;calY--;} renderCalendar(); }
@@ -2839,6 +2844,8 @@ function saveRecEdit(){
 }
 // ════════════════════════════════════════
 function exportExcel(){
+  loadXLSX(function(){
+
   const ms=document.getElementById('exportMonth')?.value||'';
   let list=ms?records.filter(r=>r.date.startsWith(ms)):[...records];
   if(!list.length){toast('無資料可匯出','tw');return;}
@@ -2897,6 +2904,8 @@ function exportExcel(){
 
   XLSX.writeFile(wb, ms?`打卡紀錄_${ms}.xlsx`:'打卡紀錄_全部.xlsx');
   toast('✓ Excel 已匯出','ts');
+
+  });
 }
 
 // ════════════════════════════════════════
