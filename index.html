@@ -2418,20 +2418,24 @@ function initGeo(){
   if(!settings.geoEnabled){ bar.style.display='none'; return; }
   bar.style.display='flex';
   setGeoStatus('loading');
-  if(!navigator.geolocation){
-    setGeoStatus('unsupported'); return;
-  }
-  navigator.geolocation.getCurrentPosition(onGeoSuccess, onGeoError, {
-    enableHighAccuracy:true, timeout:12000, maximumAge:30000
+  if(!navigator.geolocation){ setGeoStatus('unsupported'); return; }
+  if(window._geoWatchId != null) navigator.geolocation.clearWatch(window._geoWatchId);
+  if(window._geoTimerId) clearInterval(window._geoTimerId);
+  window._geoWatchId = navigator.geolocation.watchPosition(onGeoSuccess, onGeoError, {
+    enableHighAccuracy:true, timeout:15000, maximumAge:5000
   });
+  window._geoTimerId = setInterval(()=>{
+    navigator.geolocation.getCurrentPosition(onGeoSuccess, onGeoError, {
+      enableHighAccuracy:true, timeout:15000, maximumAge:0
+    });
+  }, 30000);
 }
 
 function refreshGeo(){
-  window._geoReady=false; window._geoOk=false;
   setGeoStatus('loading');
   if(!navigator.geolocation){ setGeoStatus('unsupported'); return; }
   navigator.geolocation.getCurrentPosition(onGeoSuccess, onGeoError, {
-    enableHighAccuracy:true, timeout:12000, maximumAge:0
+    enableHighAccuracy:true, timeout:15000, maximumAge:0
   });
 }
 
