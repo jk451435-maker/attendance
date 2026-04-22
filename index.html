@@ -2434,6 +2434,17 @@ function initGeo(){
 function refreshGeo(){
   setGeoStatus('loading');
   if(!navigator.geolocation){ setGeoStatus('unsupported'); return; }
+  // 重啟 watchPosition + 立即取一次
+  if(window._geoWatchId != null) navigator.geolocation.clearWatch(window._geoWatchId);
+  if(window._geoTimerId) clearInterval(window._geoTimerId);
+  window._geoWatchId = navigator.geolocation.watchPosition(onGeoSuccess, onGeoError, {
+    enableHighAccuracy:true, timeout:15000, maximumAge:5000
+  });
+  window._geoTimerId = setInterval(()=>{
+    navigator.geolocation.getCurrentPosition(onGeoSuccess, onGeoError, {
+      enableHighAccuracy:true, timeout:15000, maximumAge:0
+    });
+  }, 30000);
   navigator.geolocation.getCurrentPosition(onGeoSuccess, onGeoError, {
     enableHighAccuracy:true, timeout:15000, maximumAge:0
   });
@@ -2458,9 +2469,11 @@ function onGeoSuccess(pos){
 }
 
 function onGeoError(err){
-  window._geoReady=true; window._geoOk=false;
-  setGeoStatus('error', null, null, err.message);
-  updatePunchUI(); // 定位失敗後重新更新按鈕狀態
+  window._geoReady=true;
+  // timeout 時保留舊的定位狀態，不清除 _geoOk
+  if(err.code !== err.TIMEOUT) window._geoOk=false;
+  setGeoStatus('error', null, null, err.code===err.TIMEOUT?'定位逾時，使用上次位置':err.message);
+  updatePunchUI();
 }
 
 function setGeoStatus(state, dist, radius, errMsg){
@@ -2497,11 +2510,10 @@ function setGeoStatus(state, dist, radius, errMsg){
     sub.textContent = '';
   }
 
-  // disable punch buttons if geo enabled but not ok
+  // enable/disable punch buttons based on geo status
   const geoBlock = settings.geoEnabled && !s.ok;
-  if(geoBlock){
-    btnIn.disabled=true; btnOut.disabled=true;
-  }
+  btnIn.disabled = geoBlock;
+  btnOut.disabled = geoBlock;
 }
 
 function calcDist(lat1,lng1,lat2,lng2){
