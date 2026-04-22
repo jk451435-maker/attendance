@@ -2421,33 +2421,40 @@ function initGeo(){
   if(!navigator.geolocation){ setGeoStatus('unsupported'); return; }
   if(window._geoWatchId != null) navigator.geolocation.clearWatch(window._geoWatchId);
   if(window._geoTimerId) clearInterval(window._geoTimerId);
-  window._geoWatchId = navigator.geolocation.watchPosition(onGeoSuccess, onGeoError, {
-    enableHighAccuracy:true, timeout:15000, maximumAge:5000
+  // 先用低精度（Wi-Fi/IP）快速取得位置，通常 1-2 秒內完成
+  navigator.geolocation.getCurrentPosition(onGeoSuccess, ()=>{}, {
+    enableHighAccuracy:false, timeout:8000, maximumAge:120000
   });
+  // 同時啟動高精度 watchPosition（GPS，可能需要較久）
+  window._geoWatchId = navigator.geolocation.watchPosition(onGeoSuccess, onGeoError, {
+    enableHighAccuracy:true, timeout:30000, maximumAge:10000
+  });
+  // 每 60 秒重新取得一次（防止瀏覽器停止更新）
   window._geoTimerId = setInterval(()=>{
-    navigator.geolocation.getCurrentPosition(onGeoSuccess, onGeoError, {
-      enableHighAccuracy:true, timeout:15000, maximumAge:0
+    navigator.geolocation.getCurrentPosition(onGeoSuccess, ()=>{}, {
+      enableHighAccuracy:false, timeout:8000, maximumAge:0
     });
-  }, 30000);
+  }, 60000);
 }
 
 function refreshGeo(){
   setGeoStatus('loading');
   if(!navigator.geolocation){ setGeoStatus('unsupported'); return; }
-  // 重啟 watchPosition + 立即取一次
   if(window._geoWatchId != null) navigator.geolocation.clearWatch(window._geoWatchId);
   if(window._geoTimerId) clearInterval(window._geoTimerId);
+  // 先低精度快速取得
+  navigator.geolocation.getCurrentPosition(onGeoSuccess, ()=>{}, {
+    enableHighAccuracy:false, timeout:8000, maximumAge:0
+  });
+  // 再啟動高精度持續追蹤
   window._geoWatchId = navigator.geolocation.watchPosition(onGeoSuccess, onGeoError, {
-    enableHighAccuracy:true, timeout:15000, maximumAge:5000
+    enableHighAccuracy:true, timeout:30000, maximumAge:10000
   });
   window._geoTimerId = setInterval(()=>{
-    navigator.geolocation.getCurrentPosition(onGeoSuccess, onGeoError, {
-      enableHighAccuracy:true, timeout:15000, maximumAge:0
+    navigator.geolocation.getCurrentPosition(onGeoSuccess, ()=>{}, {
+      enableHighAccuracy:false, timeout:8000, maximumAge:0
     });
-  }, 30000);
-  navigator.geolocation.getCurrentPosition(onGeoSuccess, onGeoError, {
-    enableHighAccuracy:true, timeout:15000, maximumAge:0
-  });
+  }, 60000);
 }
 
 function onGeoSuccess(pos){
