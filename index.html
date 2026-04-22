@@ -3022,6 +3022,67 @@ function saveSettings(){
     const btn = e.target.closest('.nav-btn[data-tip]');
     if(btn && !btn.contains(e.relatedTarget)) tip.style.display='none';
   });
+
+
+  // ── 忘記打卡提醒 ──
+  function checkPunchReminder(){
+    const user = currentUser;
+    if(!user || user.role === 'admin') return;
+    const today = getTodayStr();
+    const todayRecords = records.filter(r => r.empId === user.id && r.date === today);
+    const hasIn = todayRecords.some(r => r.type === 'in');
+    const hasOut = todayRecords.some(r => r.type === 'out');
+    
+    // 取得今日班別
+    const key = user.id + ':' + today;
+    const sid = schedule[key];
+    if(!sid || sid === 'off' || sid === 'holiday') return;
+    const shift = shifts.find(s => s.id === sid);
+    if(!shift) return;
+    
+    const now = new Date();
+    const [endH, endM] = shift.endTime.split(':').map(Number);
+    const endMin = endH * 60 + endM;
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    
+    // 上班時間到了但沒打上班卡
+    const [startH, startM] = shift.startTime.split(':').map(Number);
+    const startMin = startH * 60 + startM;
+    const lateLimit = (shifts.find(s=>s.id===sid)?.lateLimit || 5);
+    if(nowMin >= startMin + lateLimit && !hasIn){
+      showPunchReminder('⚠️ 你還沒打上班卡！', '班別 ' + shift.name + ' 上班時間 ' + shift.startTime + '，請盡快打卡');
+    }
+    // 下班時間到了但沒打下班卡（且已打上班卡）
+    else if(nowMin >= endMin && hasIn && !hasOut){
+      showPunchReminder('⚠️ 你還沒打下班卡！', '班別 ' + shift.name + ' 下班時間 ' + shift.endTime + '，請記得打卡');
+    }
+  }
+
+  function showPunchReminder(title, msg){
+    // 避免重複通知
+    const key = 'reminder_' + getTodayStr() + '_' + title;
+    if(sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+    
+    // 瀏覽器通知
+    if('Notification' in window && Notification.permission === 'granted'){
+      new Notification(title, { body: msg, icon: '🕐' });
+    }
+    // 頁面內 toast 提醒
+    toast(title + ' ' + msg, 'tw', 8000);
+  }
+
+  function initPunchReminder(){
+    // 請求通知權限
+    if('Notification' in window && Notification.permission === 'default'){
+      Notification.requestPermission();
+    }
+    // 每分鐘檢查一次
+    setInterval(checkPunchReminder, 60000);
+    // 頁面載入時也立即檢查
+    setTimeout(checkPunchReminder, 3000);
+  }
+
 })();
 
 function toast(msg,type='ti'){
