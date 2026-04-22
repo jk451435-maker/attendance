@@ -2856,6 +2856,114 @@ function saveRecEdit(){
   toast('紀錄已更新','ts');
 }
 // ════════════════════════════════════════
+
+function exportSalaryReport(){
+  // 選擇月份（預設上個月）
+  const now = new Date();
+  const defaultMonth = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const ym = prompt('請輸入要匯出的月份（格式：YYYY-MM）', 
+    defaultMonth.getFullYear()+'-'+String(defaultMonth.getMonth()+1).padStart(2,'0'));
+  if(!ym || !/^d{4}-d{2}$/.test(ym)){ toast('格式錯誤，請輸入 YYYY-MM','te'); return; }
+
+  const monthRecords = records.filter(r => r.date.startsWith(ym));
+  
+  // 計算每位員工的出勤資料
+  const empStats = employees.map(emp => {
+    const empRecs = monthRecords.filter(r => r.empId === emp.id);
+    
+    // 排班天數（非休假非假日）
+    const schedDays = Object.entries(schedule)
+      .filter(([k,v]) => k.startsWith(emp.id+':') && k.includes(ym) && v !== 'off' && v !== 'holiday')
+      .length;
+    const offDays = Object.entries(schedule)
+      .filter(([k,v]) => k.startsWith(emp.id+':') && k.includes(ym) && v === 'off')
+      .length;
+
+    // 出勤天數（有打上班卡的日期）
+    const attendDates = new Set(empRecs.filter(r=>r.type==='in').map(r=>r.date));
+    const attendDays = attendDates.size;
+    
+    // 缺勤（排班但沒打卡）
+    const absentDays = Math.max(0, schedDays - attendDays);
+
+    // 遲到
+    const lateRecs = empRecs.filter(r => r.lateMin > 0);
+    const lateTimes = lateRecs.length;
+    const lateMinTotal = lateRecs.reduce((s,r) => s+(r.lateMin||0), 0);
+
+    // 加班
+    const otRecs = empRecs.filter(r => r.otHours > 0);
+    const otTimes = otRecs.length;
+    const otHoursTotal = otRecs.reduce((s,r) => s+(r.otHours||0), 0);
+
+    // 上下班配對計算工時
+    let workHours = 0;
+    const inRecs = empRecs.filter(r=>r.type==='in').sort((a,b)=>a.date.localeCompare(b.date));
+    const outRecs = empRecs.filter(r=>r.type==='out').sort((a,b)=>a.date.localeCompare(b.date));
+    inRecs.forEach(inR => {
+      const outR = outRecs.find(o => o.date === inR.date);
+      if(outR){
+        const [ih,im] = inR.time.split(':').map(Number);
+        const [oh,om] = outR.time.split(':').map(Number);
+        workHours += Math.max(0, (oh*60+om - ih*60-im) / 60);
+      }
+    });
+
+    return {
+      '員工姓名': emp.name,
+      '員工類型': emp.empType === 'pt' ? 'PT 兼職' : 'FT 全職',
+      '部門': emp.dept || '—',
+      '月份': ym,
+      '排班天數': schedDays,
+      '休假天數': offDays,
+      '出勤天數': attendDays,
+      '缺勤天數': absentDays,
+      '實際工時(h)': Math.round(workHours * 10) / 10,
+      '遲到次數': lateTimes,
+      '遲到總分鐘': lateMinTotal,
+      '加班次數': otTimes,
+      '加班總時數': Math.round(otHoursTotal * 10) / 10,
+    };
+  });
+
+  // 用 SheetJS 匯出
+  const ws = XLSX.utils.json_to_sheet(empStats);
+  // 設定欄寬
+  ws['!cols'] = [
+    {wch:10},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8},
+    {wch:10},{wch:8},{wch:10},{wch:8},{wch:10}
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, ym+' 薪資報表');
+
+  // 第二張：打卡明細
+  const detail = monthRecords.map(r => {
+    const emp = employees.find(e=>e.id===r.empId);
+    const sid = schedule[r.empId+':'+r.date];
+    const sh = shifts.find(s=>s.id===sid);
+    return {
+      '員工': r.empName,
+      '類型': emp?.empType==='pt'?'PT':'FT',
+      '日期': r.date,
+      '打卡類型': r.type==='in'?'上班':r.type==='out'?'下班':r.type==='ot'?'加班':'其他',
+      '時間': r.time,
+      '班別': sh?.name||(sid==='off'?'休假':''),
+      '遲到分鐘': r.lateMin||0,
+      '加班時數': r.otHours||0,
+      '備註': r.note||'',
+      '方式': r.isManual?'補登':'正常',
+    };
+  });
+  if(detail.length){
+    const ws2 = XLSX.utils.json_to_sheet(detail);
+    ws2['!cols'] = [{wch:10},{wch:6},{wch:12},{wch:8},{wch:10},{wch:6},{wch:8},{wch:8},{wch:16},{wch:6}];
+    XLSX.utils.book_append_sheet(wb, ws2, '打卡明細');
+  }
+
+  XLSX.writeFile(wb, ym+'_薪資報表.xlsx');
+  toast('✓ '+ym+' 薪資報表已匯出', 'ts');
+}
+
 function exportExcel(){
   const ms=document.getElementById('exportMonth')?.value||'';
   let list=ms?records.filter(r=>r.date.startsWith(ms)):[...records];
