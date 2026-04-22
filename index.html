@@ -2859,45 +2859,27 @@ function saveRecEdit(){
 // ════════════════════════════════════════
 
 function exportSalaryReport(){
-  // 選擇月份（預設上個月）
+  // 直接讀頁面上的月份選擇器，沒有就用上個月
+  const picker = document.getElementById('exportMonth');
   const now = new Date();
-  const defaultMonth = new Date(now.getFullYear(), now.getMonth()-1, 1);
-  const ym = prompt('請輸入要匯出的月份（格式：YYYY-MM）', 
-    defaultMonth.getFullYear()+'-'+String(defaultMonth.getMonth()+1).padStart(2,'0'));
-  if(!ym || !/^d{4}-d{2}$/.test(ym)){ toast('格式錯誤，請輸入 YYYY-MM','te'); return; }
+  const lastMonth = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const defaultYm = lastMonth.getFullYear()+'-'+String(lastMonth.getMonth()+1).padStart(2,'0');
+  const ym = (picker && picker.value) ? picker.value : defaultYm;
+  if(!ym){ toast('請先選擇月份','te'); return; }
 
   const monthRecords = records.filter(r => r.date.startsWith(ym));
   
-  // 計算每位員工的出勤資料
   const empStats = employees.map(emp => {
     const empRecs = monthRecords.filter(r => r.empId === emp.id);
-    
-    // 排班天數（非休假非假日）
     const schedDays = Object.entries(schedule)
-      .filter(([k,v]) => k.startsWith(emp.id+':') && k.includes(ym) && v !== 'off' && v !== 'holiday')
-      .length;
+      .filter(([k,v]) => k.startsWith(emp.id+':') && k.includes(ym) && v !== 'off' && v !== 'holiday').length;
     const offDays = Object.entries(schedule)
-      .filter(([k,v]) => k.startsWith(emp.id+':') && k.includes(ym) && v === 'off')
-      .length;
-
-    // 出勤天數（有打上班卡的日期）
+      .filter(([k,v]) => k.startsWith(emp.id+':') && k.includes(ym) && v === 'off').length;
     const attendDates = new Set(empRecs.filter(r=>r.type==='in').map(r=>r.date));
     const attendDays = attendDates.size;
-    
-    // 缺勤（排班但沒打卡）
     const absentDays = Math.max(0, schedDays - attendDays);
-
-    // 遲到
     const lateRecs = empRecs.filter(r => r.lateMin > 0);
-    const lateTimes = lateRecs.length;
-    const lateMinTotal = lateRecs.reduce((s,r) => s+(r.lateMin||0), 0);
-
-    // 加班
     const otRecs = empRecs.filter(r => r.otHours > 0);
-    const otTimes = otRecs.length;
-    const otHoursTotal = otRecs.reduce((s,r) => s+(r.otHours||0), 0);
-
-    // 上下班配對計算工時
     let workHours = 0;
     const inRecs = empRecs.filter(r=>r.type==='in').sort((a,b)=>a.date.localeCompare(b.date));
     const outRecs = empRecs.filter(r=>r.type==='out').sort((a,b)=>a.date.localeCompare(b.date));
@@ -2909,7 +2891,6 @@ function exportSalaryReport(){
         workHours += Math.max(0, (oh*60+om - ih*60-im) / 60);
       }
     });
-
     return {
       '員工姓名': emp.name,
       '員工類型': emp.empType === 'pt' ? 'PT 兼職' : 'FT 全職',
@@ -2920,35 +2901,29 @@ function exportSalaryReport(){
       '出勤天數': attendDays,
       '缺勤天數': absentDays,
       '實際工時(h)': Math.round(workHours * 10) / 10,
-      '遲到次數': lateTimes,
-      '遲到總分鐘': lateMinTotal,
-      '加班次數': otTimes,
-      '加班總時數': Math.round(otHoursTotal * 10) / 10,
+      '遲到次數': lateRecs.length,
+      '遲到總分鐘': lateRecs.reduce((s,r) => s+(r.lateMin||0), 0),
+      '加班次數': otRecs.length,
+      '加班總時數': Math.round(otRecs.reduce((s,r) => s+(r.otHours||0), 0) * 10) / 10,
     };
   });
 
-  // 用 SheetJS 匯出
   const ws = XLSX.utils.json_to_sheet(empStats);
-  // 設定欄寬
-  ws['!cols'] = [
-    {wch:10},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8},
-    {wch:10},{wch:8},{wch:10},{wch:8},{wch:10}
-  ];
+  ws['!cols'] = [{wch:10},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8},{wch:10},{wch:8},{wch:10},{wch:8},{wch:10}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, ym+' 薪資報表');
 
-  // 第二張：打卡明細
   const detail = monthRecords.map(r => {
     const emp = employees.find(e=>e.id===r.empId);
     const sid = schedule[r.empId+':'+r.date];
     const sh = shifts.find(s=>s.id===sid);
     return {
       '員工': r.empName,
-      '類型': emp?.empType==='pt'?'PT':'FT',
+      '類型': emp ? (emp.empType==='pt'?'PT':'FT') : '',
       '日期': r.date,
       '打卡類型': r.type==='in'?'上班':r.type==='out'?'下班':r.type==='ot'?'加班':'其他',
       '時間': r.time,
-      '班別': sh?.name||(sid==='off'?'休假':''),
+      '班別': sh ? sh.name : (sid==='off'?'休假':''),
       '遲到分鐘': r.lateMin||0,
       '加班時數': r.otHours||0,
       '備註': r.note||'',
