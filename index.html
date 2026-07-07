@@ -2646,13 +2646,43 @@ function saveRecEdit(){
 }
 // ════════════════════════════════════════
 
+// 依「畫面上的篩選」決定匯出範圍:員工 + 起訖日期(或本日/本週/本月分頁;
+// 都沒選才用月份框;再沒有才全部)。回傳 {list, dateFrom, dateTo, label, ym}
+function getExportScope(){
+  const from0 = document.getElementById('filterDateFrom')?.value || '';
+  const to0   = document.getElementById('filterDateTo')?.value   || '';
+  const ms    = document.getElementById('exportMonth')?.value    || '';
+  const emp   = document.getElementById('filterEmpRec')?.value   || '';
+  let dateFrom='', dateTo='', label='全部', ym='';
+
+  if(from0 || to0){
+    dateFrom=from0; dateTo=to0; label=(from0||'…')+'~'+(to0||'…'); ym=(from0||to0).slice(0,7);
+  } else if(recFilter==='today'){
+    const t=todayStr(); dateFrom=dateTo=t; label=t; ym=t.slice(0,7);
+  } else if(recFilter==='thisweek'){
+    const r=getWeekRange(); dateFrom=r.from; dateTo=r.to; label=r.from+'~'+r.to; ym=r.from.slice(0,7);
+  } else if(recFilter==='thismonth'){
+    const n=new Date(); const mm=`${n.getFullYear()}-${pad(n.getMonth()+1)}`;
+    dateFrom=mm+'-01'; dateTo=mm+'-'+pad(new Date(n.getFullYear(),n.getMonth()+1,0).getDate());
+    label=mm; ym=mm;
+  } else if(ms){
+    dateFrom=ms+'-01'; dateTo=ms+'-31'; label=ms; ym=ms;
+  }
+
+  let list=[...records];
+  if(emp)      list=list.filter(r=>r.empId===emp);
+  if(dateFrom) list=list.filter(r=>r.date>=dateFrom);
+  if(dateTo)   list=list.filter(r=>r.date<=dateTo);
+  return {list, dateFrom, dateTo, label, ym, emp};
+}
+
 function exportSalaryReport(){
-  // 直接讀頁面上的月份選擇器，沒有就用上個月
-  const picker = document.getElementById('exportMonth');
+  // 月份優先序:月份框 → 畫面日期/分頁篩選推得的月份 → 上個月
+  const scope = getExportScope();
   const now = new Date();
   const lastMonth = new Date(now.getFullYear(), now.getMonth()-1, 1);
   const defaultYm = lastMonth.getFullYear()+'-'+String(lastMonth.getMonth()+1).padStart(2,'0');
-  const ym = (picker && picker.value) ? picker.value : defaultYm;
+  const ym = scope.ym || defaultYm;
   if(!ym){ toast('請先選擇月份','te'); return; }
 
   const monthRecords = records.filter(r => r.date.startsWith(ym));
@@ -2729,9 +2759,9 @@ function exportSalaryReport(){
 }
 
 function exportExcel(){
-  const ms=document.getElementById('exportMonth')?.value||'';
-  let list=ms?records.filter(r=>r.date.startsWith(ms)):[...records];
-  if(!list.length){toast('無資料可匯出','tw');return;}
+  const scope=getExportScope();
+  const list=scope.list;
+  if(!list.length){toast('此範圍('+scope.label+')無資料可匯出','tw');return;}
 
   const wb=XLSX.utils.book_new();
 
@@ -2809,8 +2839,8 @@ function exportExcel(){
   ws['!cols']=[{wch:10},{wch:6},{wch:8},{wch:8},{wch:8},{wch:12},{wch:10},{wch:8},{wch:16},{wch:8},{wch:16},{wch:18}];
   XLSX.utils.book_append_sheet(wb,ws,'打卡明細(原始)');
 
-  // Second sheet: monthly summary per employee
-  if(ms){
+  // Second sheet: 區間彙總 per employee(只要有選範圍就產出)
+  if(scope.dateFrom || scope.dateTo){
     const empMap={};
     list.forEach(r=>{
       if(!empMap[r.empId]) empMap[r.empId]={
@@ -2833,11 +2863,12 @@ function exportExcel(){
     }));
     const ws2=XLSX.utils.json_to_sheet(summary);
     ws2['!cols']=[{wch:10},{wch:8},{wch:8},{wch:8},{wch:10},{wch:8},{wch:10}];
-    XLSX.utils.book_append_sheet(wb,ws2,'月報表');
+    XLSX.utils.book_append_sheet(wb,ws2,'區間彙總');
   }
 
-  XLSX.writeFile(wb, ms?`打卡紀錄_${ms}.xlsx`:'打卡紀錄_全部.xlsx');
-  toast('✓ Excel 已匯出','ts');
+  const fnLabel=(scope.label==='全部')?'全部':scope.label.replace(/[~…]/g,'_');
+  XLSX.writeFile(wb, `打卡紀錄_${fnLabel}.xlsx`);
+  toast('✓ Excel 已匯出('+scope.label+')','ts');
 }
 
 // ════════════════════════════════════════
