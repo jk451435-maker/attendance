@@ -1160,6 +1160,9 @@ var _hwLoading = {};
   setInterval(tick,1000); tick();
   setInterval(updateStats,30000);
 
+  // 每天自動備份一次(共用單機模式的資料保命機制)
+  setTimeout(autoBackupDaily, 1500);
+
   // Auth: restore session or show login
   if(currentUser){
     closeModal('loginScreen');
@@ -2877,7 +2880,7 @@ function exportExcel(){
 // ════════════════════════════════════════
 // 備份 / 還原
 // ════════════════════════════════════════
-function exportBackup(){
+function exportBackup(auto){
   const backup = {
     version: 1,
     exportedAt: new Date().toISOString(),
@@ -2893,12 +2896,25 @@ function exportBackup(){
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   const date = new Date().toISOString().slice(0,10);
-  a.download = `反作用力打卡系統備份_${date}.json`;
+  a.download = `${auto?'自動備份_':'反作用力打卡系統備份_'}${date}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
-  toast('✅ 備份已匯出','ts');
+  toast(auto ? '🗄️ 已自動備份今日資料到「下載」資料夾' : '✅ 備份已匯出','ts');
+}
+
+// 每天第一次開啟時,自動下載一份備份到「下載」資料夾(防清快取/裝置遺失)。
+// 共用單機模式的資料只存在本機,這是最實際的保命機制。
+function autoBackupDaily(){
+  try{
+    if(settings && settings.autoBackup === false) return;   // 可由設定關閉
+    if(!(records.length || employees.length)) return;        // 無資料不備份
+    const today = todayStr();
+    if(localStorage.getItem('pr2_lastAutoBackup') === today) return;  // 今天已備份過
+    exportBackup(true);
+    localStorage.setItem('pr2_lastAutoBackup', today);
+  }catch(e){ /* 備份失敗不影響主程式 */ }
 }
 
 function importBackup(input){
