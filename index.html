@@ -2732,7 +2732,59 @@ function exportExcel(){
   const ms=document.getElementById('exportMonth')?.value||'';
   let list=ms?records.filter(r=>r.date.startsWith(ms)):[...records];
   if(!list.length){toast('無資料可匯出','tw');return;}
-  const data=list.map(r=>{
+
+  const wb=XLSX.utils.book_new();
+
+  // ── 主表:每日出勤(一天一列,上/下班分欄 + 自動算工時)──
+  const hm2min = t => { if(!t) return null; const [h,m]=t.split(':').map(Number); return h*60+m; };
+  const min2hm = v => String(Math.floor(v/60)).padStart(2,'0')+':'+String(v%60).padStart(2,'0');
+  const days={};   // key: empId + '|' + date
+  list.forEach(r=>{
+    const k=r.empId+'|'+r.date;
+    if(!days[k]) days[k]={empId:r.empId, empName:r.empName, date:r.date, ins:[], outs:[], otHours:0, lateMin:0, notes:[]};
+    const d=days[k];
+    if(r.type==='in')  d.ins.push(r);
+    if(r.type==='out') d.outs.push(r);
+    if(r.otHours>0) d.otHours+=r.otHours;
+    if(r.lateMin>0)  d.lateMin=Math.max(d.lateMin, r.lateMin);
+    if(r.note) d.notes.push(r.note);
+  });
+  const daily=Object.values(days).sort((a,b)=> a.empName.localeCompare(b.empName) || a.date.localeCompare(b.date))
+    .map(d=>{
+      const emp=employees.find(e=>e.id===d.empId);
+      const sid=schedule[d.empId+':'+d.date];
+      const shift=shifts.find(s=>s.id===sid);
+      const inT  = d.ins.length  ? d.ins.map(r=>r.time).sort()[0] : '';                    // 最早上班
+      const outT = d.outs.length ? d.outs.map(r=>r.time).sort().slice(-1)[0] : '';         // 最晚下班
+      let workH='';
+      if(inT && outT){
+        let mi=hm2min(inT), mo=hm2min(outT);
+        if(mo<mi) mo+=24*60;                 // 跨日
+        workH=Math.round((mo-mi)/60*100)/100;
+      }
+      const manual=[...d.ins,...d.outs].some(r=>r.isManual);
+      return{
+        '員工姓名': d.empName,
+        '員工類型': emp?.empType==='pt'?'PT':'FT',
+        '部門':     emp?.dept||'—',
+        '日期':     d.date,
+        '班別':     shift?shift.name:(sid==='off'?'休假':sid==='holiday'?'假日':'—'),
+        '上班時間': inT||'—',
+        '下班時間': outT||'—',
+        '工時(h)':  workH===''?'—':workH,
+        '遲到分鐘': d.lateMin||0,
+        '加班時數': d.otHours||0,
+        '備註':     d.notes.join(' / '),
+        '資料狀態': (inT&&outT)?'完整':(inT||outT)?'缺打卡':'—',
+        '補登':     manual?'是':'',
+      };
+    });
+  const wsD=XLSX.utils.json_to_sheet(daily);
+  wsD['!cols']=[{wch:10},{wch:6},{wch:8},{wch:12},{wch:8},{wch:9},{wch:9},{wch:8},{wch:8},{wch:8},{wch:18},{wch:8},{wch:6}];
+  XLSX.utils.book_append_sheet(wb,wsD,'每日出勤');
+
+  // ── 稽核用:逐筆原始打卡 ──
+  const data=list.slice().sort((a,b)=> a.empName.localeCompare(b.empName) || a.date.localeCompare(b.date) || (a.time||'').localeCompare(b.time||'')).map(r=>{
     const key=r.empId+':'+r.date;
     const sid=schedule[key];
     const shift=shifts.find(s=>s.id===sid);
@@ -2755,8 +2807,7 @@ function exportExcel(){
   });
   const ws=XLSX.utils.json_to_sheet(data);
   ws['!cols']=[{wch:10},{wch:6},{wch:8},{wch:8},{wch:8},{wch:12},{wch:10},{wch:8},{wch:16},{wch:8},{wch:16},{wch:18}];
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'打卡紀錄');
+  XLSX.utils.book_append_sheet(wb,ws,'打卡明細(原始)');
 
   // Second sheet: monthly summary per employee
   if(ms){
