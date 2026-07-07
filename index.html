@@ -20,8 +20,10 @@
   --s3:      #e8e5e0;
   --border:  #ddd9d3;
   --border2: #c8c4bc;
-  --gold:    #9a7840;
-  --gold2:   #7a5c28;
+  --blue:    #2a3897;  /* 企業主色 深藍 */
+  --blueD:   #1f2a72;  /* 企業主色 深藍(加深,文字用) */
+  --gold:    #eabd18;  /* 企業金 點綴 */
+  --goldD:   #c99f0f;  /* 企業金(加深) */
   --sage:    #4a7a52;
   --rose:    #8f3f3f;
   --amber:   #8a6a20;
@@ -85,13 +87,13 @@ body {
 .logo-mark {
   width: 30px; height: 30px;
   border-radius: 7px;
-  background: linear-gradient(135deg, #6b5030, #b89860);
+  background: linear-gradient(135deg, #2a3897, #eabd18);
   display: flex; align-items: center; justify-content: center;
   font-size: .95rem;
   flex-shrink: 0;
 }
 .logo-name { font-size: .9rem; font-weight: 700; letter-spacing: -.01em; }
-.logo-name em { color: var(--gold2); font-style: normal; }
+.logo-name em { color: var(--blueD); font-style: normal; }
 
 .nav { padding: .5rem .4rem; flex: 1; overflow-y: auto; min-height: 0; }
 .nav-btn {
@@ -112,7 +114,7 @@ body {
   margin-bottom: 2px;
 }
 .nav-btn:hover { color: var(--text); background: var(--s2); }
-.nav-btn.active { color: var(--gold2); background: rgba(180,148,96,.1); font-weight: 600; }
+.nav-btn.active { color: var(--blueD); background: rgba(42,56,151,.1); font-weight: 600; }
 .nav-btn .ni { font-size: .95rem; width: 18px; text-align: center; flex-shrink: 0; }
 
 .sidebar-foot {
@@ -140,10 +142,10 @@ body {
   display: none;
   padding: .32rem .6rem;
   border-radius: 6px;
-  background: rgba(180,148,96,.08);
-  border: 1px solid rgba(180,148,96,.18);
+  background: rgba(42,56,151,.08);
+  border: 1px solid rgba(42,56,151,.18);
   font-size: .72rem;
-  color: var(--gold2);
+  color: var(--blueD);
   margin-bottom: .4rem;
   white-space: nowrap;
   overflow: hidden;
@@ -161,7 +163,7 @@ body {
   flex-shrink: 0;
 }
 .topbar-title { font-size: 1rem; font-weight: 700; letter-spacing: -.02em; }
-.topbar-title span { color: var(--gold2); }
+.topbar-title span { color: var(--blueD); }
 .topbar-right { display: flex; align-items: center; gap: .8rem; }
 .live-clock { font-family: 'JetBrains Mono', monospace; font-size: .8rem; color: var(--muted2); }
 #topUserBadge { font-size: .76rem; color: var(--muted2); }
@@ -170,7 +172,7 @@ body {
 .page { display: none; }
 .page.active { display: block; }
 .pg-title { font-size: 1.2rem; font-weight: 800; letter-spacing: -.02em; margin-bottom: 1.1rem; }
-.pg-title span { color: var(--gold2); }
+.pg-title span { color: var(--blueD); }
 
 /* ── Card ── */
 .card {
@@ -193,7 +195,7 @@ body {
 /* ── Stats ── */
 .stats4 { display: grid; grid-template-columns: repeat(4,1fr); gap: .7rem; margin-bottom: 1rem; }
 .scard { background: var(--s1); border: 1px solid var(--border); border-radius: var(--r); padding: .8rem .9rem; }
-.sval { font-family: 'JetBrains Mono', monospace; font-size: 1.4rem; font-weight: 700; color: var(--gold2); line-height: 1; margin-bottom: .2rem; }
+.sval { font-family: 'JetBrains Mono', monospace; font-size: 1.4rem; font-weight: 700; color: var(--blueD); line-height: 1; margin-bottom: .2rem; }
 .slbl { font-size: .7rem; color: var(--muted); }
 
 /* ── Forms ── */
@@ -214,7 +216,7 @@ input, select, textarea {
   transition: border-color .15s;
   width: 100%;
 }
-input:focus, select:focus, textarea:focus { border-color: var(--gold); }
+input:focus, select:focus, textarea:focus { border-color: var(--blue); }
 textarea { resize: vertical; min-height: 52px; }
 
 /* ── Buttons ── */
@@ -233,14 +235,14 @@ textarea { resize: vertical; min-height: 52px; }
   white-space: nowrap;
   position: relative;
 }
-.btn-gold { background: linear-gradient(135deg, #7a5c2e, #b89860); color: #1a1612; }
+.btn-gold { background: linear-gradient(135deg, #c99f0f, #eabd18); color: #1a1612; }
 .btn-gold:hover { filter: brightness(1.08); transform: translateY(-1px); }
 .btn-sage { background: linear-gradient(135deg, #3d5e44, #6b8f72); color: #fff; }
 .btn-sage:hover { filter: brightness(1.1); transform: translateY(-1px); }
 .btn-rose { background: linear-gradient(135deg, #5e3030, #8f5f5f); color: #fff; }
 .btn-rose:hover { filter: brightness(1.1); transform: translateY(-1px); }
 .btn-ghost { background: transparent; border: 1px solid var(--border2); color: var(--muted2); }
-.btn-ghost:hover { border-color: var(--gold); color: var(--gold2); }
+.btn-ghost:hover { border-color: var(--blue); color: var(--blueD); }
 .btn-sm { padding: .28rem .65rem; font-size: .76rem; }
 .btn:disabled { opacity: .3; cursor: not-allowed; transform: none !important; filter: none !important; }
 
@@ -325,9 +327,9 @@ textarea { resize: vertical; min-height: 52px; }
   font-size: .7rem; color: var(--muted2); font-weight: 600;
   padding: .25rem .15rem; background: var(--s2); border-radius: 5px;
 }
-.sg-th-day.today-col { background: rgba(180,148,96,.15); color: var(--gold2); }
+.sg-th-day.today-col { background: rgba(42,56,151,.15); color: var(--blueD); }
 .sg-th-day.sun-col   { color: var(--rose); }
-.sg-th-day.sat-col   { color: var(--gold2); }
+.sg-th-day.sat-col   { color: var(--blueD); }
 .sg-td-name {
   position: sticky; left: 0; z-index: 2;
   background: var(--s1); min-width: 80px; max-width: 80px;
@@ -347,7 +349,7 @@ textarea { resize: vertical; min-height: 52px; }
   user-select: none;
 }
 .sg-cell:hover { filter: brightness(1.2); border-color: var(--border2); }
-.sg-cell.sg-today { border-color: var(--gold) !important; }
+.sg-cell.sg-today { border-color: var(--blue) !important; }
 .sg-cell.sg-holiday { background: rgba(158,128,64,.15); color: var(--amber); }
 .sg-cell.sg-off     { background: rgba(122,110,158,.1);  color: var(--mauve); }
 .sg-cell.sg-empty   { color: var(--muted); background: var(--s2); }
@@ -383,13 +385,13 @@ textarea { resize: vertical; min-height: 52px; }
   transition: all .15s;
   font-family: 'Noto Sans TC', sans-serif;
 }
-.sched-emp-chip.active { border-color: var(--gold); color: var(--gold2); background: rgba(180,148,96,.08); }
+.sched-emp-chip.active { border-color: var(--blue); color: var(--blueD); background: rgba(42,56,151,.08); }
 
 /* ── Calendar ── */
 .cal-wrap { overflow-x: visible; }
 .cal-table { width: 100%; border-collapse: separate; border-spacing: 2px; table-layout: fixed; }
 .cal-table th { padding: .38rem .2rem; font-size: .7rem; color: var(--muted2); text-align: center; font-weight: 600; background: var(--s2); border-radius: 5px; }
-.cal-table th.sat { color: var(--gold2); }
+.cal-table th.sat { color: var(--blueD); }
 .cal-table th.sun { color: var(--rose); }
 .cal-cell {
   background: var(--s2);
@@ -404,13 +406,13 @@ textarea { resize: vertical; min-height: 52px; }
   overflow: hidden;
 }
 .cal-cell:hover { background: var(--s3); border-color: var(--border2); }
-.cal-cell.today { border-color: var(--gold) !important; }
+.cal-cell.today { border-color: var(--blue) !important; }
 .cal-cell.other-m { opacity: .22; }
 .cal-cell.holiday { background: rgba(158,128,64,.06); border-color: rgba(158,128,64,.18); }
 .cal-cell.dayoff  { background: rgba(122,110,144,.05); }
 .cal-day { font-size: .7rem; color: var(--muted); margin-bottom: .15rem; font-family: 'JetBrains Mono', monospace; }
 .cal-day.sun-num { color: var(--rose); }
-.cal-day.sat-num { color: var(--gold2); }
+.cal-day.sat-num { color: var(--blueD); }
 .cal-shift-list { display: flex; flex-direction: column; gap: 2px; }
 .cal-shift-tag { font-size: .66rem; font-weight: 700; padding: .08rem .25rem; border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cal-off-tag { font-size: .65rem; color: var(--muted); font-style: italic; }
@@ -429,7 +431,7 @@ textarea { resize: vertical; min-height: 52px; }
   cursor: pointer;
   transition: all .15s;
 }
-.ftab.active { background: var(--gold); color: #1a1612; border-color: var(--gold); font-weight: 700; }
+.ftab.active { background: var(--blue); color: #1a1612; border-color: var(--blue); font-weight: 700; }
 .rec-list { max-height: 380px; overflow-y: auto; }
 .rec-list::-webkit-scrollbar { width: 3px; }
 .rec-list::-webkit-scrollbar-thumb { background: var(--border2); }
@@ -449,12 +451,12 @@ textarea { resize: vertical; min-height: 52px; }
 .dot-out { background: var(--rose); }
 .rec-name { font-weight: 500; font-size: .86rem; }
 .rec-sub  { font-size: .71rem; color: var(--muted2); margin-top: .1rem; }
-.rec-time { font-family: 'JetBrains Mono', monospace; font-size: .8rem; color: var(--gold2); text-align: right; }
+.rec-time { font-family: 'JetBrains Mono', monospace; font-size: .8rem; color: var(--blueD); text-align: right; }
 .rec-date { font-size: .68rem; color: var(--muted); text-align: right; }
 .rec-del  { background: none; border: none; color: var(--muted); cursor: pointer; font-size: .82rem; padding: .12rem .28rem; border-radius: 4px; transition: color .13s; }
 .rec-del:hover { color: var(--rose); }
 .rec-edit { background: none; border: none; color: var(--muted); cursor: pointer; font-size: .82rem; padding: .12rem .28rem; border-radius: 4px; transition: color .13s; }
-.rec-edit:hover { color: var(--gold2); }
+.rec-edit:hover { color: var(--blueD); }
 
 /* ── Custom Tooltip ── */
 [data-tip] { position: relative; }
@@ -552,7 +554,7 @@ textarea { resize: vertical; min-height: 52px; }
   flex-direction: column;
 }
 .modal h2 { font-size: 1.05rem; font-weight: 800; margin-bottom: 1.1rem; }
-.modal h2 span { color: var(--gold2); }
+.modal h2 span { color: var(--blueD); }
 .modal-footer { display: flex; gap: .55rem; margin-top: 1.1rem; flex-shrink: 0; }
 
 /* ── Toast ── */
@@ -576,14 +578,14 @@ textarea { resize: vertical; min-height: 52px; }
 .toast.show { transform: translateX(-50%) translateY(0); }
 .toast.ts { border-color: var(--sage);  color: var(--sage); }
 .toast.te { border-color: var(--rose);  color: var(--rose); }
-.toast.ti { border-color: var(--gold2); color: var(--gold2); }
+.toast.ti { border-color: var(--blueD); color: var(--blueD); }
 .toast.tw { border-color: var(--amber); color: var(--amber); }
 
 /* ── Toggle switch ── */
 .toggle-wrap { position:relative; display:inline-block; width:40px; height:22px; cursor:pointer; }
 .toggle-wrap input { opacity:0; width:0; height:0; position:absolute; }
 .toggle-track { position:absolute; inset:0; background:var(--border2); border-radius:11px; transition:.2s; }
-.toggle-wrap input:checked ~ .toggle-track { background: var(--gold); }
+.toggle-wrap input:checked ~ .toggle-track { background: var(--blue); }
 .toggle-thumb { position:absolute; top:2px; left:2px; width:18px; height:18px; background:#fff; border-radius:50%; transition:.2s; pointer-events:none; }
 .toggle-wrap input:checked ~ .toggle-thumb { left:20px; }
 
@@ -610,11 +612,11 @@ textarea { resize: vertical; min-height: 52px; }
 <div class="modal-bg" id="loginScreen">
   <div class="modal" style="width:400px;">
     <div style="text-align:center;margin-bottom:1.4rem;">
-      <div style="width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#6b5030,#b89860);display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin:0 auto .7rem;">⏱</div>
-      <div style="font-size:1.1rem;font-weight:800;letter-spacing:-.02em;">班表<span style="color:var(--gold2);">Pro</span></div>
+      <div style="width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#2a3897,#eabd18);display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin:0 auto .7rem;">⏱</div>
+      <div style="font-size:1.1rem;font-weight:800;letter-spacing:-.02em;">班表<span style="color:var(--blueD);">Pro</span></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:.45rem;margin-bottom:1.1rem;">
-      <button id="tabEmp"   onclick="switchLoginTab('emp')"   style="padding:.55rem;border-radius:7px;border:2px solid var(--gold);background:rgba(180,148,96,.1);color:var(--gold2);font-family:'Noto Sans TC',sans-serif;font-size:.84rem;font-weight:700;cursor:pointer;">👤 員工登入</button>
+      <button id="tabEmp"   onclick="switchLoginTab('emp')"   style="padding:.55rem;border-radius:7px;border:2px solid var(--blue);background:rgba(42,56,151,.1);color:var(--blueD);font-family:'Noto Sans TC',sans-serif;font-size:.84rem;font-weight:700;cursor:pointer;">👤 員工登入</button>
       <button id="tabAdmin" onclick="switchLoginTab('admin')" style="padding:.55rem;border-radius:7px;border:2px solid var(--border2);background:transparent;color:var(--muted2);font-family:'Noto Sans TC',sans-serif;font-size:.84rem;font-weight:600;cursor:pointer;">👑 管理員</button>
     </div>
     <div id="empLoginForm">
@@ -1250,9 +1252,9 @@ function switchLoginTab(tab){
   document.getElementById('empLoginForm').style.display  = isEmp?'block':'none';
   document.getElementById('adminLoginForm').style.display= isEmp?'none':'block';
   const te=document.getElementById('tabEmp'), ta=document.getElementById('tabAdmin');
-  te.style.borderColor  = isEmp?'var(--gold2)':'var(--border2)';
+  te.style.borderColor  = isEmp?'var(--blueD)':'var(--border2)';
   te.style.background   = isEmp?'rgba(160,120,80,.1)':'transparent';
-  te.style.color        = isEmp?'var(--gold2)':'var(--muted2)';
+  te.style.color        = isEmp?'var(--blueD)':'var(--muted2)';
   ta.style.borderColor  = isEmp?'var(--border2)':'var(--amber)';
   ta.style.background   = isEmp?'transparent':'rgba(176,136,64,.1)';
   ta.style.color        = isEmp?'var(--muted2)':'var(--amber)';
@@ -1996,7 +1998,7 @@ function renderMyCalendar(){
   // Stats cards
   const statsEl = document.getElementById('myCalStats');
   statsEl.innerHTML = `
-    <div class="scard"><div class="sval" style="color:var(--gold2);">${workDays}</div><div class="slbl">排班天數</div></div>
+    <div class="scard"><div class="sval" style="color:var(--blueD);">${workDays}</div><div class="slbl">排班天數</div></div>
     <div class="scard"><div class="sval" style="color:var(--mauve);">${offDays}</div><div class="slbl">休假天數</div></div>
     <div class="scard"><div class="sval" style="color:var(--amber);">${holidayDays}</div><div class="slbl">假日天數</div></div>
     <div class="scard"><div class="sval" style="color:var(--muted2);">${unassigned}</div><div class="slbl">未排班（平日）</div></div>
@@ -2278,7 +2280,7 @@ function setGeoStatus(state, dist, radius, errMsg){
     out:         { i:'🚫', t:'超出打卡範圍',           c:'var(--rose)',    bc:'rgba(158,79,79,.25)',  ok:false },
     error:       { i:'⚠️', t:'無法取得定位',           c:'var(--amber)', bc:'rgba(176,136,64,.25)', ok:false },
     unsupported: { i:'❌', t:'瀏覽器不支援定位',       c:'var(--rose)',    bc:'rgba(158,79,79,.25)',  ok:false },
-    noconfig:    { i:'📍', t:'定位已取得（未設限制）', c:'var(--gold2)','bc':'var(--border2)',    ok:true  },
+    noconfig:    { i:'📍', t:'定位已取得（未設限制）', c:'var(--blueD)','bc':'var(--border2)',    ok:true  },
   };
   const s = states[state] || states.loading;
   icon.textContent = s.i;
@@ -2316,7 +2318,7 @@ function toggleGeoFields(){
   document.getElementById('geoFields').style.display = on ? 'block' : 'none';
   const track = document.getElementById('geoToggleTrack');
   const thumb = document.getElementById('geoToggleThumb');
-  track.style.background = on ? 'var(--gold)' : 'var(--border2)';
+  track.style.background = on ? 'var(--blue)' : 'var(--border2)';
   thumb.style.left = on ? '23px' : '3px';
 }
 
@@ -2339,7 +2341,7 @@ function applyGeoUI(){
   document.getElementById('geoFields').style.display = en ? 'block' : 'none';
   const track = document.getElementById('geoToggleTrack');
   const thumb = document.getElementById('geoToggleThumb');
-  if(track){ track.style.background = en ? 'var(--gold)' : 'var(--border2)'; }
+  if(track){ track.style.background = en ? 'var(--blue)' : 'var(--border2)'; }
   if(thumb){ thumb.style.left = en ? '23px' : '3px'; }
   if(settings.geoLat) document.getElementById('geoLat').value = settings.geoLat;
   if(settings.geoLng) document.getElementById('geoLng').value = settings.geoLng;
